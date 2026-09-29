@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { MAX_UPLOAD_BYTES } from '../config'
 import { api, ApiError } from '../lib/api'
-import type { ChatTurn, Ingestion, RelayedTx, ScopeSummary, SessionStatus } from '../lib/api'
+import type { ChatTurn, Ingestion, RelayedTx, ScopeSummary, ScopeStatus, SessionStatus } from '../lib/api'
 import type { Message, NewMessage } from './messages'
 
 export type ScopeState = 'pending' | 'active' | 'revoking' | 'revoked' | 'ended' | 'mismatch'
@@ -72,8 +72,8 @@ export function useRevokeAI(notify: Notify) {
     if (!cur) return
     try {
       const status = await api.status({ id: cur.id, token: cur.token })
-      const byHash = new Map(status.scopes.map((s) => [s.scopeHash, s]))
-      patchScopes((s) => {
+      const byHash = new Map<string, ScopeStatus>(status.scopes.map((s) => [s.scopeHash, s]))
+      patchScopes((s: ScopeView) => {
         const st = byHash.get(s.scopeHash)
         if (!st || s.state === 'revoking') return s
         return { ...s, state: stateFrom(st), purged: st.purgedFromMemory, proof: st.revocation ?? status.ended ?? s.proof }
@@ -104,7 +104,7 @@ export function useRevokeAI(notify: Notify) {
           filename: up.filename,
           stage: 'review',
           ingestion: up.ingestion,
-          scopes: up.scopes.map((s) => ({ ...s, state: 'pending', purged: false })),
+          scopes: up.scopes.map((s: ScopeSummary) => ({ ...s, state: 'pending' as const, purged: false })),
         })
       } catch (err) {
         notify('error', 'Upload failed', errorText(err))
@@ -169,9 +169,9 @@ export function useRevokeAI(notify: Notify) {
         const nowRevoked = new Set(
           (sessionRef.current?.scopes ?? [])
             .filter((s) => s.state === 'revoked' || s.state === 'ended' || s.state === 'revoking')
-            .map((s) => s.label),
+            .map((s: ScopeView) => s.label),
         )
-        const stale = used.filter((l) => nowRevoked.has(l))
+        const stale = used.filter((l: string) => nowRevoked.has(l))
         setHistory(result.data.history)
         setLastUsed(used)
         push({
@@ -185,7 +185,7 @@ export function useRevokeAI(notify: Notify) {
           ...(stale.length ? { redactedBecause: stale } : {}),
         })
       } catch (err) {
-        push({ kind: 'error', text: err instanceof ApiError ? err.message : 'Something went wrong talking to the agent.' })
+        push({ kind: 'error', text: (err instanceof ApiError) ? err.message : 'Something went wrong talking to the agent.' })
       } finally {
         setThinking(false)
       }
@@ -212,7 +212,7 @@ export function useRevokeAI(notify: Notify) {
           hashes.forEach((h) => proofs.set(h, headline))
         } else {
           const res = await api.revokeScope(s, hashes)
-          res.revoked.forEach((r) => proofs.set(r.scopeHash, r))
+          res.revoked.forEach((r: RelayedTx & { scopeHash: string }) => proofs.set(r.scopeHash, r))
           headline = res.transactions[res.transactions.length - 1]
         }
         // Instant UI update from the returned tx; the refresh below re-reads chain state.
