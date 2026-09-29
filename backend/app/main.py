@@ -83,15 +83,14 @@ def create_app(extensions: Sequence[ChatExtension] | None = None) -> ExtensibleA
         except GeminiNotConfiguredError:
             raise HTTPException(503, "Gemini API key is not configured on the server.")
         except genai_errors.ClientError as exc:
-            # Log only status + message; the SDK never includes the key in these,
-            # and we never echo upstream details to the caller.
-            logger.warning("Gemini client error %s: %s", exc.code, exc.message)
+            # Log full details for diagnostics; the SDK never includes the key.
+            logger.warning("Gemini client error %s: %s (full: %r)", exc.code, exc.message, exc)
             if exc.code == 429:
                 raise HTTPException(429, "Upstream rate limit reached. Try again shortly.")
-            raise HTTPException(502, "The AI provider rejected the request.")
+            raise HTTPException(502, f"The AI provider rejected the request: {exc.message}")
         except genai_errors.APIError as exc:
-            logger.error("Gemini server error %s: %s", exc.code, exc.message)
-            raise HTTPException(502, "The AI provider is unavailable.")
+            logger.error("Gemini server error %s: %s (full: %r)", exc.code, exc.message, exc)
+            raise HTTPException(502, f"The AI provider is unavailable: {exc.message}")
 
         reply = answer.reply
         for ext in app.extensions:

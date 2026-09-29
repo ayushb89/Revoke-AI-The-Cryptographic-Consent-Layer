@@ -92,19 +92,41 @@ class GeminiChat:
         text = f"<consented_document_context>\n{context}\n</consented_document_context>\n\n{message}" if context else message
         contents.append(types.Content(role="user", parts=[types.Part.from_text(text=text)]))
 
+        system = SYSTEM_INSTRUCTION + (GROUNDED_INSTRUCTION if context else "") + REASONING_INSTRUCTION
+
+        # Try structured JSON mode first; fall back to plain text if the model
+        # or API key type doesn't support response_schema / response_mime_type.
+        try:
+            response = await self._client.aio.models.generate_content(
+                model=self._model,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=system,
+                    response_mime_type="application/json",
+                    response_schema=_Structured,
+                    automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+                ),
+            )
+            parsed = response.parsed
+            if isinstance(parsed, _Structured):
+                return GeminiReply(parsed.reply, parsed.reasoning.strip() or None)
+            return parse_structured(response.text or "")
+        except Exception as structured_err:
+            logger.warning(
+                "Structured JSON call failed (%s: %s); retrying as plain text",
+                type(structured_err).__name__,
+                structured_err,
+            )
+
+        # Fallback: plain text call — no schema, no mime type constraint.
         response = await self._client.aio.models.generate_content(
             model=self._model,
             contents=contents,
             config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTION + (GROUNDED_INSTRUCTION if context else "") + REASONING_INSTRUCTION,
-                response_mime_type="application/json",
-                response_schema=_Structured,
+                system_instruction=system,
                 automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
             ),
         )
-        parsed = response.parsed
-        if isinstance(parsed, _Structured):
-            return GeminiReply(parsed.reply, parsed.reasoning.strip() or None)
         return parse_structured(response.text or "")
 
     async def aclose(self) -> None:
