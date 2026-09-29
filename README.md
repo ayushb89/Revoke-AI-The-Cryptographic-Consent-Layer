@@ -22,6 +22,8 @@ Consent and memory-hygiene middleware for AI agents, built for the MST Blockchai
     └── fixtures/mock_medical_report.md
 ```
 
+**Deploying:** see [DEPLOY.md](DEPLOY.md) (Render backend + Vercel frontend).
+
 ## Document ingestion
 
 `POST /api/documents/upload` accepts **.txt, .md, .pdf, .docx, .png, .jpg** (up to 10 MB). The type is checked from the file's bytes, not its extension.

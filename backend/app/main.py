@@ -36,7 +36,10 @@ def create_app(extensions: Sequence[ChatExtension] | None = None) -> ExtensibleA
 
     app.add_middleware(
         CORSMiddleware,
+        # Production: ALLOWED_ORIGINS="https://<app>.vercel.app" (comma-separated), plus an
+        # optional ALLOWED_ORIGIN_REGEX for preview deploys. No wildcard, no credentials.
         allow_origins=settings.allowed_origins,
+        allow_origin_regex=settings.allowed_origin_regex,
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type", SESSION_TOKEN_HEADER],
     )

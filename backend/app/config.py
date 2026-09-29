@@ -26,6 +26,8 @@ MST_REGISTRY_ADDRESS = "0xAF6816DAB557a6e4258E210D202bc0974D7f9AE1"
 class Settings:
     gemini_model: str
     allowed_origins: list[str]
+    # Optional regex for extra browser origins, e.g. Vercel preview deployments.
+    allowed_origin_regex: str | None
     revokeai_enabled: bool
     revokeai_rpc_url: str
     revokeai_registry_address: str
@@ -61,7 +63,9 @@ def _load() -> Settings:
     origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")
     return Settings(
         gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip(),
-        allowed_origins=[o.strip() for o in origins.split(",") if o.strip()],
+        # Exact origins, comma-separated, no trailing slash (e.g. https://revoke-ai.vercel.app).
+        allowed_origins=[o.strip().rstrip("/") for o in origins.split(",") if o.strip()],
+        allowed_origin_regex=os.getenv("ALLOWED_ORIGIN_REGEX", "").strip() or None,
         revokeai_enabled=os.getenv("REVOKEAI_ENABLED", "true").strip().lower() in ("1", "true", "yes"),
         revokeai_rpc_url=os.getenv("REVOKEAI_RPC_URL", MST_TESTNET_RPC_URL).strip(),
         revokeai_registry_address=os.getenv("REVOKEAI_REGISTRY_ADDRESS", MST_REGISTRY_ADDRESS).strip(),

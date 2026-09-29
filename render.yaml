@@ -1,0 +1,49 @@
+# Render Blueprint for the RevokeAI backend (FastAPI + local revokeai-core SDK).
+# Render dashboard -> New -> Blueprint -> select this repository.
+#
+# Secrets are declared with `sync: false`: Render asks for their values when the
+# Blueprint is created and never reads them from this file or the repository.
+
+services:
+  - type: web
+    name: revokeai-backend
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    # Commands run from the repository root. `cd backend` matters: requirements.txt
+    # installs the SDK with `-e ../packages/revokeai-core`, a path relative to backend/.
+    buildCommand: cd backend && python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+    # One worker on purpose: document sessions live in process memory and the gas
+    # relayer serialises transaction nonces in-process. --proxy-headers makes the
+    # per-client rate limits see real client IPs behind Render's proxy.
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips="*"
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.7
+
+      # --- Secrets: paste values in the Render dashboard -----------------------
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: REVOKEAI_RELAYER_PRIVATE_KEY   # testnet-only wallet funded with tMSTC; pays gas
+        sync: false
+      - key: REVOKEAI_SIGNER_KEY            # signs revocation receipts; holds no funds
+        sync: false
+      - key: ALLOWED_ORIGINS                # e.g. https://revoke-ai.vercel.app (no trailing slash)
+        sync: false
+
+      # --- Public configuration ------------------------------------------------
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: REVOKEAI_RPC_URL
+        value: https://testnetrpc.mstblockchain.com
+      - key: REVOKEAI_REGISTRY_ADDRESS
+        value: "0xAF6816DAB557a6e4258E210D202bc0974D7f9AE1"
+      - key: REVOKEAI_EXPLORER_URL
+        value: https://testnet.mstscan.com
+      - key: REVOKEAI_SEMANTIC_CHUNKING
+        value: "true"
+      - key: REVOKEAI_SESSION_TTL_SECONDS
+        value: "7200"

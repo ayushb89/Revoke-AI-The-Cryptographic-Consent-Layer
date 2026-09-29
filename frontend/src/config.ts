@@ -1,5 +1,9 @@
-/** Empty = same origin (Vite proxies /api to the backend in dev). */
-export const API_BASE: string = import.meta.env.VITE_API_BASE ?? ''
+/**
+ * Backend base URL. Empty = same origin (the Vite dev server proxies /api to
+ * localhost:8000). In production set VITE_API_BASE at build time, e.g. in the
+ * Vercel dashboard: https://revokeai-backend.onrender.com (no trailing slash).
+ */
+export const API_BASE: string = (import.meta.env.VITE_API_BASE ?? '').replace(/\/+$/, '')
 
 export const MAX_UPLOAD_BYTES = 10_000_000
 
