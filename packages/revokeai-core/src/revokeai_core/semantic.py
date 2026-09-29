@@ -208,7 +208,7 @@ class GeminiDocumentAI:
     """DocumentAI backed by Gemini: native vision for transcription and
     schema-constrained JSON output for chunking plans."""
 
-    def __init__(self, api_key: str, model: str = "gemini-2.5-flash") -> None:
+    def __init__(self, api_key: str, model: str = "gemini-3.8-flash") -> None:
         from google import genai  # optional dependency: revokeai-core[gemini]
 
         self._client = genai.Client(api_key=api_key)
