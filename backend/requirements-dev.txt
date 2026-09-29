@@ -1,0 +1,7 @@
+-r requirements.txt
+# Offline verification (scripts/test_revoke_flow.py --local): in-process EVM + solc.
+# eth-tester's [py-evm] extra is avoided on purpose: it pulls safe-pysha3, which
+# fails to build on Python 3.13/Windows; pycryptodome is used for keccak instead.
+eth-tester>=0.12
+py-evm>=0.10
+py-solc-x>=2

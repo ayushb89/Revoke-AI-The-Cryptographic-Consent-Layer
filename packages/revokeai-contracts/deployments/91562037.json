@@ -1,0 +1,9 @@
+{
+  "contract": "RevokeConsentRegistry",
+  "address": "0xaf6816dab557a6e4258e210d202bc0974d7f9ae1",
+  "chainId": 91562037,
+  "network": "mstTestnet",
+  "deployer": "0x3de3f134a7afaf6f4778bd40a406befa88234c60",
+  "deployedAtBlock": 5786174,
+  "deployedAt": "2026-09-28T16:43:02.787Z"
+}
