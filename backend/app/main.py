@@ -59,6 +59,67 @@ def create_app(extensions: Sequence[ChatExtension] | None = None) -> ExtensibleA
             extensions={ext.name: await run_in_threadpool(ext.info) for ext in app.extensions},
         )
 
+    @app.get("/api/debug-gemini")
+    async def debug_gemini(request: Request) -> dict:
+        """Temporary diagnostic endpoint — tests Gemini API from this server."""
+        import traceback
+        from google import genai
+        from google.genai import types as gtypes
+
+        key = settings.gemini_api_key
+        model = settings.gemini_model
+        result: dict = {
+            "key_present": key is not None,
+            "key_length": len(key) if key else 0,
+            "key_prefix": key[:8] + "..." if key and len(key) > 8 else "(short)",
+            "model": model,
+            "tests": {},
+        }
+
+        if not key:
+            result["tests"]["plain"] = {"status": "SKIPPED", "reason": "No API key"}
+            return result
+
+        client = genai.Client(api_key=key)
+
+        # Test 1: Plain text call
+        try:
+            resp = client.models.generate_content(
+                model=model,
+                contents="Say hello in one word.",
+            )
+            result["tests"]["plain"] = {"status": "OK", "response": resp.text[:100]}
+        except Exception as e:
+            result["tests"]["plain"] = {
+                "status": "FAILED",
+                "error_type": type(e).__name__,
+                "error": str(e)[:500],
+                "traceback": traceback.format_exc()[-800:],
+            }
+
+        # Test 2: Structured JSON call
+        try:
+            from pydantic import BaseModel as BM
+            class _T(BM):
+                reply: str
+            resp = client.models.generate_content(
+                model=model,
+                contents="Say hello in one word.",
+                config=gtypes.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=_T,
+                ),
+            )
+            result["tests"]["structured"] = {"status": "OK", "response": resp.text[:100]}
+        except Exception as e:
+            result["tests"]["structured"] = {
+                "status": "FAILED",
+                "error_type": type(e).__name__,
+                "error": str(e)[:500],
+            }
+
+        return result
+
     @app.post("/api/chat")
     async def chat(
         body: ChatRequest,
