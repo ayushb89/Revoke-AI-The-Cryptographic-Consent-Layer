@@ -55,14 +55,15 @@ class Settings:
 
 
 def _secret(name: str) -> str | None:
-    value = os.getenv(name)
-    return value.strip() if value and value.strip() else None
+    # Tolerate values pasted into hosting dashboards with surrounding quotes/spaces.
+    value = (os.getenv(name) or "").strip().strip('"').strip("'").strip()
+    return value or None
 
 
 def _load() -> Settings:
     origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")
     return Settings(
-        gemini_model=os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip(),
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip(),
         # Exact origins, comma-separated, no trailing slash (e.g. https://revoke-ai.vercel.app).
         allowed_origins=[o.strip().rstrip("/") for o in origins.split(",") if o.strip()],
         allowed_origin_regex=os.getenv("ALLOWED_ORIGIN_REGEX", "").strip() or None,
@@ -73,7 +74,7 @@ def _load() -> Settings:
         revokeai_session_ttl_seconds=int(os.getenv("REVOKEAI_SESSION_TTL_SECONDS", "7200")),
         # Gemini-powered document reading (vision OCR + semantic chunking); rules are the fallback.
         revokeai_semantic_chunking=os.getenv("REVOKEAI_SEMANTIC_CHUNKING", "true").strip().lower() in ("1", "true", "yes"),
-        revokeai_doc_model=os.getenv("REVOKEAI_DOC_MODEL", os.getenv("GEMINI_MODEL", "gemini-3.8-flash")).strip(),
+        revokeai_doc_model=os.getenv("REVOKEAI_DOC_MODEL", os.getenv("GEMINI_MODEL", "gemini-2.5-flash")).strip(),
     )
 
 
